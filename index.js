@@ -35,7 +35,7 @@ let time = 'all'; // What time period to sort by (hour, day, week, month, year, 
 let repeatForever = false; // If true, the program will repeat every timeBetweenRuns milliseconds
 let downloadDirectory = ''; // Where to download the files to, defined when
 let downloadDirectoryBase = './downloads'; // Default download path, can be overridden
-const postDelayMilliseconds = 250;
+let postDelayMilliseconds = 250;
 
 let currentUserAfter = ''; // Used to track the after value for the API call, this is used to get the next X posts
 
@@ -94,6 +94,10 @@ if (testingMode) {
 	if (config.testingModeOptions.downloadDirectory) {
 		downloadDirectoryBase = config.testingModeOptions.downloadDirectory;
 	}
+}
+// Maybe delay after successful download
+if( config.download_delay !== undefined && config.download_delay > 0 ){
+    postDelayMilliseconds = config.download_delay;
 }
 
 // Start actions
@@ -726,7 +730,7 @@ async function downloadPost(post) {
 		}
 
 		// The title will be the directory name
-		const postTitleScrubbed = getFileName(post);
+        const postTitleScrubbed = sanitizeFileName(getFileName(post));
 		let newDownloads = Object.keys(post.media_metadata).length;
 		// gallery_data retains the order of the gallery, so we loop over this
 		// media_id can be used as the key in media_metadata
@@ -738,12 +742,15 @@ async function downloadPost(post) {
 			const shortUrl = downloadUrl.split('?')[0];
 			const fileType = shortUrl.split('.').pop();
 
-			// Create directory for gallery
-			const postDirectory = `${downloadDirectory}/${postTitleScrubbed}`;
-			if (!fs.existsSync(postDirectory)) {
-				fs.mkdirSync(postDirectory);
-			}
-			const filePath = `${postTitleScrubbed}/${id}.${fileType}`;
+            let filePath = `${postTitleScrubbed}_${id}.${fileType}`
+            if( config.separate_galleries ){
+                // Create directory for gallery
+    			const postDirectory = `${downloadDirectory}/${postTitleScrubbed}`;
+    			if (!fs.existsSync(postDirectory)) {
+    				fs.mkdirSync(postDirectory);
+    			}
+    			filePath = `${postTitleScrubbed}/${id}.${fileType}`;
+            }
 			const toDownload = await shouldWeDownload(post.subreddit, filePath);
 
 			if (!toDownload) {
@@ -766,8 +773,7 @@ async function downloadPost(post) {
 		// Get the file type of the post via the URL. If it ends in .jpg, then it's a jpg.
 		let fileType = downloadURL.split('.').pop();
 		// Post titles can be really long and have invalid characters, so we need to clean them up.
-		let postTitleScrubbed = sanitizeFileName(post.title);
-		postTitleScrubbed = getFileName(post);
+		const postTitleScrubbed = sanitizeFileName(getFileName(post));
 
 		if (postType === 0) {
 			// DOWNLOAD A SELF POST
@@ -1352,7 +1358,12 @@ function log(message, detailed) {
 
 // sanitize function for file names so that they work on Mac, Windows, and Linux
 function sanitizeFileName(fileName) {
-	return fileName
+    const maxLength = 20;
+    const scrubbedFileName = fileName
 		.replace(/[/\\?%*:|"<>]/g, '-')
 		.replace(/([^/])\/([^/])/g, '$1_$2');
+    const trimmedString = scrubbedFileName.length > maxLength ?
+                    scrubbedFileName.substring(0, maxLength) :
+                    scrubbedFileName;
+    return trimmedString;
 }

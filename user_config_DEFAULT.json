@@ -26,6 +26,7 @@
         "showScore": true,
         "showSubreddit": true
     },
+    "download_delay": 500,
     "download_self_posts": true,
     "download_media_posts": true,
     "download_link_posts": true,
@@ -33,6 +34,7 @@
     "download_youtube_videos_experimental": false,
     "download_comments": true,
     "separate_clean_nsfw": false,
+    "separate_galleries": false,
     "redownload_posts": false,
     "detailed_logs": false
 }
